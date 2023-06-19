@@ -115,7 +115,7 @@ class SmsObserver1(handler: Handler?) : ContentObserver(handler) {
             .setInputData(dataToSend.build()).build()
 
         WorkManager.getInstance(mContext!!).enqueue(saveNumberWorkRequest)
-        Toast.makeText(mContext, message, Toast.LENGTH_LONG).show()
+//        Toast.makeText(mContext, message, Toast.LENGTH_LONG).show()
     }
 
     }

@@ -33,6 +33,6 @@ public class smsObserver extends ContentObserver {
                 String message = cur.getString(cur.getColumnIndex("body"));
                 // Use message content for desired functionality
 
-        Toast.makeText(mContext, message, Toast.LENGTH_LONG).show();
+//        Toast.makeText(mContext, message, Toast.LENGTH_LONG).show();
     }
 }
