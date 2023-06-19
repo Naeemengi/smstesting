@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.IBinder
 import android.provider.Telephony
+import android.provider.Telephony.Threads.getOrCreateThreadId
 import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.work.*
@@ -28,6 +29,16 @@ class SmsObserverService : Service() {
         mmsObserver.setmContext(this)
 //        myObserver.observe()
         val contentResolver = this.baseContext.contentResolver
+        try {
+            getContentResolver().unregisterContentObserver(myObserver)
+        } catch (ise: IllegalStateException) {
+// Do Nothing.  Observer has already been unregistered.
+        }
+        try {
+            getContentResolver().unregisterContentObserver(mmsObserver)
+        } catch (ise: IllegalStateException) {
+// Do Nothing.  Observer has already been unregistered.
+        }
         contentResolver.registerContentObserver(Uri.parse("content://sms"), true, myObserver)
         contentResolver.registerContentObserver(Uri.parse("content://mms"), true, mmsObserver)
 
@@ -140,100 +151,137 @@ class MmsObserver1(handler: Handler?) : ContentObserver(handler) {
 //    }
     override fun onChange(selfChange: Boolean) {
         super.onChange(selfChange)
+       val mmsThread = Thread {
+           mContext?.contentResolver?.query(
+               Telephony.Mms.CONTENT_URI,
+               null,
+               null,
+               null,
+               null
+           ) ?.apply {
+               if (moveToFirst()) {
+                   val idColumn = getColumnIndex("_id")
+                   val dateColumn = getColumnIndex("date")
+                   val textColumn = getColumnIndex("text_only")
+                   val typeColumn = getColumnIndex("msg_box")
+                   if (smsChecker(idColumn.toString())) {
+                       do {
+                           val id = getString(idColumn)
+                           val isMms = getString(textColumn) == "0"
+                           val date = getString(dateColumn).toLong() * 1000
+                           val type = getString(typeColumn).toInt()
+                           if (isMms) {
+                               val selectionPart = "mid=$id"
+                               val partUri = Uri.parse("content://mms/part")
+                               val cursor = mContext?.contentResolver?.query(
+                                   partUri, null,
+                                   selectionPart, null, null
+                               )!!
+                               var body = ""
+                               var file: String? = null
+                               if (cursor.moveToFirst()) {
+                                   do {
+                                       val partId: String = cursor.getString(cursor.getColumnIndex("_id"))
+                                       val typeString = cursor.getString(cursor.getColumnIndex("ct"))
+                                       if (file == null &&
+                                           (typeString.startsWith("video") ||
+                                                   typeString.startsWith("image") ||
+                                                   typeString.startsWith("audio"))
+                                       ) {
+                                           file = saveFile(partId, typeString, date)
+                                       }
+                                       if (file != null && body.isNotEmpty()) break
+
+                                       val sender = getAddressNumber(id.toInt())
+                                       val rawNumber = sender.second
+
+                                       val sh = android.preference.PreferenceManager.getDefaultSharedPreferences(mContext)
+
+                                       val myNumber = sh.getString("myNumber", "000");
+                                       val dataToSend = Data.Builder()
+                                           .putString(SaveMessageWorker.SENDER_PHONE_NUMBER, rawNumber)
+                                           .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER,myNumber )
+                                           .putString(SaveMessageWorker.MESSAGE_CONTENT,"empty")
+                                           .putString(SaveMessageWorker.SENT_AT, Calendar.getInstance().time.toString())
+                                           .putString(SaveMessageWorker.RECIEVE_AT, Calendar.getInstance().time.toString())
+                                           .putString(SaveMessageWorker.FILE_PATH, file)
+                                           .build()
+                                       val createPostConstraints =
+                                           Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
+                                       val saveNumberWorkRequest = OneTimeWorkRequest.Builder(SaveMessageWorker::class.java)
+                                           .setConstraints(createPostConstraints)
+                                           .setInputData(dataToSend).build()
+
+                                       mContext?.let { WorkManager.getInstance(it).enqueue(saveNumberWorkRequest) }
+
+                                       return@Thread
+
+                                   } while (cursor.moveToNext())
+                               }
+                               cursor.close()
+
+                           }
+                       } while (moveToNext())
+                   }
+               }
+               close()
+           }
+       }
+        mmsThread.start()
+
+    }
+    private fun getAddressNumber(id: Int): Pair<Boolean, String> {
+        var threadId = -1L
         mContext?.contentResolver?.query(
-            Telephony.Mms.CONTENT_URI,
-            null,
+            Uri.parse("content://mms/${id}"),
+            arrayOf("thread_id"),
             null,
             null,
             null
-        ) ?.apply {
+        )?.apply {
             if (moveToFirst()) {
-                val idColumn = getColumnIndex("_id")
-                val dateColumn = getColumnIndex("date")
-                val textColumn = getColumnIndex("text_only")
-                val typeColumn = getColumnIndex("msg_box")
-                if (smsChecker(idColumn.toString())) {
-                do {
-                    val id = getString(idColumn)
-                    val isMms = getString(textColumn) == "0"
-                    val date = getString(dateColumn).toLong() * 1000
-                    val type = getString(typeColumn).toInt()
-                    if (isMms) {
-                        val selectionPart = "mid=$id"
-                        val partUri = Uri.parse("content://mms/part")
-                        val cursor = mContext?.contentResolver?.query(
-                            partUri, null,
-                            selectionPart, null, null
-                        )!!
-                        var body = ""
-                        var file: String? = null
-                        if (cursor.moveToFirst()) {
-                            do {
-                                val partId: String = cursor.getString(cursor.getColumnIndex("_id"))
-                                val typeString = cursor.getString(cursor.getColumnIndex("ct"))
-                                if (file == null &&
-                                    (typeString.startsWith("video") ||
-                                            typeString.startsWith("image") ||
-                                            typeString.startsWith("audio"))
-                                ) {
-                                    file = saveFile(partId, typeString, date)
-                                }
-                                if (file != null && body.isNotEmpty()) break
-                            } while (cursor.moveToNext())
-                        }
-                        cursor.close()
-
-
-                        if (file == null && body.isBlank()) return
-
-                        Toast.makeText(mContext, "MMS Received", Toast.LENGTH_LONG).show()
-
-                    }
-                } while (moveToNext())
+                threadId = getString(0).toLong()
             }
+        }
+        var selection = "type=137 AND msg_id=$id"
+        val uriAddress = Uri.parse("content://mms/${id}/addr")
+        var cursor = mContext?.contentResolver?.query(
+            uriAddress, arrayOf("address"), selection, null, null
+        )!!
+        var address = ""
+        if (cursor.moveToFirst()) {
+            do {
+                address = cursor.getString(cursor.getColumnIndex("address"))
+                if (address != null) break
+            } while (cursor.moveToNext())
+        }
+        cursor.close()
+        try {
+            if (getOrCreateThreadId(mContext, address) == threadId) {
+                return false to address
             }
-            close()
+        } catch (e: Exception) { }
+
+        selection = "type=151 AND msg_id=$id"
+        cursor = mContext?.contentResolver?.query(
+            uriAddress, null, selection, null, null
+        )!!
+        if (cursor.moveToFirst()) {
+            do {
+                address = cursor.getString(cursor.getColumnIndex("address"))
+                if (address != null) break
+            } while (cursor.moveToNext())
         }
-
-        // Use message content for desired functionality
-//        if (smsChecker(id)) {
-
-//            val sh = android.preference.PreferenceManager.getDefaultSharedPreferences(mContext)
-//
-//            val myNumber = sh.getString("myNumber", "000");
-//
-//            val dataToSend = Data.Builder()
-//                .putString(SaveMessageWorker.SENDER_PHONE_NUMBER, myNumber)
-//                .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER, address);
-//            dataToSend.putString(SaveMessageWorker.MESSAGE_CONTENT, message)
-//                .putString(SaveMessageWorker.FILE_PATH, null)
-//
-//
-//            dataToSend.putString(SaveMessageWorker.SENT_AT, Calendar.getInstance().time.toString())
-//            dataToSend.putString(
-//                SaveMessageWorker.RECIEVE_AT,
-//                Calendar.getInstance().time.toString()
-//            )
-//
-//            val createPostConstraints =
-//                Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-//            val saveNumberWorkRequest = OneTimeWorkRequest.Builder(SaveMessageWorker::class.java)
-//                .setConstraints(createPostConstraints)
-//                .setInputData(dataToSend.build()).build()
-//
-//            WorkManager.getInstance(mContext!!).enqueue(saveNumberWorkRequest)
-            Toast.makeText(mContext, "MMS Received", Toast.LENGTH_LONG).show()
-        }
-
+        cursor.close()
+        return true to address
     }
-
     private fun saveFile(_id: String, typeString: String, date: Long): String {
         val partURI = Uri.parse("content://mms/part/$_id")
         val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(typeString)
         val name = "$date.$ext"
-        val destination = File(mContext.filesDir, name)
+        val destination = File(mContext?.filesDir, name)
         val output = FileOutputStream(destination)
-        val input = mContext.contentResolver.openInputStream(partURI) ?: return ""
+        val input = mContext?.contentResolver?.openInputStream(partURI) ?: return ""
         val buffer = ByteArray(4 * 1024)
         var read: Int
         while (input.read(buffer).also { read = it } != -1) {

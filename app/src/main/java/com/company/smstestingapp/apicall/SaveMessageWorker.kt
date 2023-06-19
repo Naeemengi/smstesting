@@ -35,7 +35,6 @@ class SaveMessageWorker (
         withContext(Dispatchers.IO) {
             val result = async {
 
-
 //                val saveMessageResponse = networkRepository.saveMessage(senderPhoneNumber,reciverPhoneNumber,message,sent_at,recieve_at,file_Path)
 
             }
@@ -43,7 +42,7 @@ class SaveMessageWorker (
         }
 
 
-        Log.e("Worker", "Saving Message $senderPhoneNumber")
+        Log.e("Worker", "Saving Message $senderPhoneNumber $file_Path")
 
 //        return if (saveNumberResponse.status == 200) {
         return  Result.success()
