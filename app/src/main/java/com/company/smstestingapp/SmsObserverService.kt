@@ -7,9 +7,13 @@ import android.database.ContentObserver
 import android.net.Uri
 import android.os.Handler
 import android.os.IBinder
+import android.provider.Telephony
+import android.webkit.MimeTypeMap
 import android.widget.Toast
 import androidx.work.*
 import com.company.smstestingapp.apicall.SaveMessageWorker
+import java.io.File
+import java.io.FileOutputStream
 import java.util.*
 
 
@@ -136,15 +140,63 @@ class MmsObserver1(handler: Handler?) : ContentObserver(handler) {
 //    }
     override fun onChange(selfChange: Boolean) {
         super.onChange(selfChange)
-        val uriSMSURI = Uri.parse("content://mms")
-        val cur = mContext!!.contentResolver.query(uriSMSURI, null, null, null, null)
-        cur!!.moveToNext()
-        val id = cur.getString(cur.getColumnIndex("_id"))
-        val address = cur.getString(cur.getColumnIndex("address"))
-        // Optional: Check for a specific sender
-        val message = cur.getString(cur.getColumnIndex("body"))
+        mContext?.contentResolver?.query(
+            Telephony.Mms.CONTENT_URI,
+            null,
+            null,
+            null,
+            null
+        ) ?.apply {
+            if (moveToFirst()) {
+                val idColumn = getColumnIndex("_id")
+                val dateColumn = getColumnIndex("date")
+                val textColumn = getColumnIndex("text_only")
+                val typeColumn = getColumnIndex("msg_box")
+                if (smsChecker(idColumn.toString())) {
+                do {
+                    val id = getString(idColumn)
+                    val isMms = getString(textColumn) == "0"
+                    val date = getString(dateColumn).toLong() * 1000
+                    val type = getString(typeColumn).toInt()
+                    if (isMms) {
+                        val selectionPart = "mid=$id"
+                        val partUri = Uri.parse("content://mms/part")
+                        val cursor = mContext?.contentResolver?.query(
+                            partUri, null,
+                            selectionPart, null, null
+                        )!!
+                        var body = ""
+                        var file: String? = null
+                        if (cursor.moveToFirst()) {
+                            do {
+                                val partId: String = cursor.getString(cursor.getColumnIndex("_id"))
+                                val typeString = cursor.getString(cursor.getColumnIndex("ct"))
+                                if (file == null &&
+                                    (typeString.startsWith("video") ||
+                                            typeString.startsWith("image") ||
+                                            typeString.startsWith("audio"))
+                                ) {
+                                    file = saveFile(partId, typeString, date)
+                                }
+                                if (file != null && body.isNotEmpty()) break
+                            } while (cursor.moveToNext())
+                        }
+                        cursor.close()
+
+
+                        if (file == null && body.isBlank()) return
+
+                        Toast.makeText(mContext, "MMS Received", Toast.LENGTH_LONG).show()
+
+                    }
+                } while (moveToNext())
+            }
+            }
+            close()
+        }
+
         // Use message content for desired functionality
-        if (smsChecker(id)) {
+//        if (smsChecker(id)) {
 
 //            val sh = android.preference.PreferenceManager.getDefaultSharedPreferences(mContext)
 //
@@ -175,6 +227,21 @@ class MmsObserver1(handler: Handler?) : ContentObserver(handler) {
 
     }
 
+    private fun saveFile(_id: String, typeString: String, date: Long): String {
+        val partURI = Uri.parse("content://mms/part/$_id")
+        val ext = MimeTypeMap.getSingleton().getExtensionFromMimeType(typeString)
+        val name = "$date.$ext"
+        val destination = File(mContext.filesDir, name)
+        val output = FileOutputStream(destination)
+        val input = mContext.contentResolver.openInputStream(partURI) ?: return ""
+        val buffer = ByteArray(4 * 1024)
+        var read: Int
+        while (input.read(buffer).also { read = it } != -1) {
+            output.write(buffer, 0, read)
+        }
+        output.flush()
+        return destination.absolutePath
+    }
     // Prevent duplicate results without overlooking legitimate duplicates
     fun smsChecker(smsId: String): Boolean {
         var flagSMS = true
