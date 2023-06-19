@@ -36,6 +36,15 @@
         </activity>
 
         <receiver
+            android:name=".MMSReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.provider.Telephony.MMS_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+
+        <receiver
             android:name=".MySmsReceiver"
             android:enabled="true"
             android:exported="true">
