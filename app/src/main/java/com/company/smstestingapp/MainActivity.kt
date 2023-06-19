@@ -1,16 +1,15 @@
 package com.company.smstestingapp
 
 import android.app.PictureInPictureParams
-import android.content.Context
 import android.content.Intent
-import android.database.ContentObserver
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
-import android.os.Handler
+import android.os.PowerManager
+import android.provider.Settings
 import android.util.Rational
 import android.view.Menu
 import android.view.MenuItem
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
@@ -52,6 +51,16 @@ class MainActivity : AppCompatActivity() {
             startService(intent)
         }
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val intent = Intent()
+            val packageName = packageName
+            val pm = getSystemService(POWER_SERVICE) as PowerManager
+            if (!pm.isIgnoringBatteryOptimizations(packageName)) {
+                intent.action = Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+            }
+        }
         binding.fab.setOnClickListener { view ->
             Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
                 .setAction("Action", null).show()
