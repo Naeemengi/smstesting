@@ -31,7 +31,7 @@ public class smsObserver extends ContentObserver {
             String address = cur.getString(cur.getColumnIndex("address"));
             // Optional: Check for a specific sender
                 String message = cur.getString(cur.getColumnIndex("body"));
-                // Use message content for desired functionality
+              // Use message content for desired functionality
 
 //        Toast.makeText(mContext, message, Toast.LENGTH_LONG).show();
     }
