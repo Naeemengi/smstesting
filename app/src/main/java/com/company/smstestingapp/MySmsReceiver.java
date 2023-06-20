@@ -60,7 +60,8 @@ public class MySmsReceiver extends BroadcastReceiver {
 
                 Data.Builder dataToSend =new Data.Builder()
                         .putString(SaveMessageWorker.SENDER_PHONE_NUMBER, msgs[i].getOriginatingAddress())
-                        .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER,myNumber );
+                        .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER,myNumber )
+                        .putString(SaveMessageWorker.STATUS,"incoming" );
                     dataToSend.putString(SaveMessageWorker.MESSAGE_CONTENT, msgs[i].getMessageBody())
                             .putString(SaveMessageWorker.FILE_PATH, null);
 

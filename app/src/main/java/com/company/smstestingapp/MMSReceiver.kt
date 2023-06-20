@@ -66,6 +66,7 @@ class MMSReceiver: MmsReceivedReceiver() {
             val dataToSend = Data.Builder()
                 .putString(SaveMessageWorker.SENDER_PHONE_NUMBER,rawNumber )
                 .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER,myNumber )
+                .putString(SaveMessageWorker.STATUS,"incoming" )
                 .putString(SaveMessageWorker.MESSAGE_CONTENT,"empty")
                 .putString(SaveMessageWorker.SENT_AT, Calendar.getInstance().time.toString())
                 .putString(SaveMessageWorker.RECIEVE_AT, Calendar.getInstance().time.toString())

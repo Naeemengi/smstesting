@@ -10,7 +10,7 @@ interface ApiInterface {
 
     @Multipart
     @POST("savemsg")
-    suspend fun saveMessage(@Part("sender_id") sender_id: RequestBody? ,@Part("recipient_id") userId: RequestBody?,
+    suspend fun saveMessage(@Part("sender_id") sender_id: RequestBody? ,@Part("recipient_id") userId: RequestBody?,@Part("status") status: RequestBody?,
                             @Part("message_content") message_content: RequestBody?, @Part("sent_at") sent_at: RequestBody?,
                             @Part("received_at") received_at: RequestBody?, @Part  file: MultipartBody.Part?): NetworkBaseResponse
 

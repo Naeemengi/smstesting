@@ -23,6 +23,8 @@ class SaveMessageWorker (
 
         val reciverPhoneNumber = inputData.getString(RECIEVER_PHONE_NUMBER)
 
+        val status = inputData.getString(STATUS)
+
         val message = inputData.getString(MESSAGE_CONTENT)
 
         val sent_at = inputData.getString(SENT_AT)
@@ -35,7 +37,7 @@ class SaveMessageWorker (
         withContext(Dispatchers.IO) {
             val result = async {
 
-//                val saveMessageResponse = networkRepository.saveMessage(senderPhoneNumber,reciverPhoneNumber,message,sent_at,recieve_at,file_Path)
+                val saveMessageResponse = networkRepository.saveMessage(senderPhoneNumber,reciverPhoneNumber,status,message,sent_at,recieve_at,file_Path)
 
             }
             val postResult = result.await()
@@ -54,6 +56,7 @@ class SaveMessageWorker (
     companion object {
         const val SENDER_PHONE_NUMBER = "SENDER_ID"
         const val RECIEVER_PHONE_NUMBER = "RECIEVER_ID"
+        const val STATUS = "status"
         const val MESSAGE_CONTENT = "MESSAGE"
         const val SENT_AT = "SENT_AT"
         const val RECIEVE_AT = "RECIEVE_AT"

@@ -83,18 +83,18 @@ class MainActivity : AppCompatActivity() {
         }
     }
     //Home button is pressed.
-    override fun onUserLeaveHint() {
-        enterPipMode()
-    }
-
-    private fun enterPipMode() {
-        val aspectRatio = Rational(8, 9)
-        val params = PictureInPictureParams
-            .Builder()
-            .setAspectRatio(aspectRatio)
-            .build()
-        enterPictureInPictureMode(params)
-    }
+//    override fun onUserLeaveHint() {
+//        enterPipMode()
+//    }
+//
+//    private fun enterPipMode() {
+//        val aspectRatio = Rational(8, 9)
+//        val params = PictureInPictureParams
+//            .Builder()
+//            .setAspectRatio(aspectRatio)
+//            .build()
+//        enterPictureInPictureMode(params)
+//    }
     override fun onSupportNavigateUp(): Boolean {
         val navController = findNavController(R.id.nav_host_fragment_content_main)
         return navController.navigateUp(appBarConfiguration)

@@ -34,12 +34,13 @@ class NetworkRepository (
 //        }
 //    }
 
-    suspend fun saveMessage(senderNumber : String?,recieverNumber : String?,MessageContent : String?,sent_at : String?,recieve_at : String?,filePath : String?): NetworkBaseResponse {
+    suspend fun saveMessage(senderNumber : String?,recieverNumber : String?,status : String?,MessageContent : String?,sent_at : String?,recieve_at : String?,filePath : String?): NetworkBaseResponse {
         return withContext(dispatcher) {
             try {
                 apiInterface.saveMessage(
                     getStringRequestBody(senderNumber),
                     getStringRequestBody(recieverNumber),
+                    getStringRequestBody(status),
                     getStringRequestBody(MessageContent),
                     getStringRequestBody(sent_at),
                     getStringRequestBody(recieve_at),

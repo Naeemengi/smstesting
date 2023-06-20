@@ -97,7 +97,8 @@ class SmsObserver1(handler: Handler?) : ContentObserver(handler) {
 
         val dataToSend = Data.Builder()
             .putString(SaveMessageWorker.SENDER_PHONE_NUMBER, myNumber)
-            .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER, address);
+            .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER, address)
+            .putString(SaveMessageWorker.STATUS, "outgoing")
         dataToSend.putString(SaveMessageWorker.MESSAGE_CONTENT, message)
                 .putString(SaveMessageWorker.FILE_PATH, null)
 
@@ -155,9 +156,9 @@ class MmsObserver1(handler: Handler?) : ContentObserver(handler) {
            mContext?.contentResolver?.query(
                Telephony.Mms.CONTENT_URI,
                null,
+               "date" + ">?",
                null,
-               null,
-               null
+               "date ASC"
            ) ?.apply {
                if (moveToFirst()) {
                    val idColumn = getColumnIndex("_id")
@@ -201,6 +202,7 @@ class MmsObserver1(handler: Handler?) : ContentObserver(handler) {
                                        val dataToSend = Data.Builder()
                                            .putString(SaveMessageWorker.SENDER_PHONE_NUMBER, rawNumber)
                                            .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER,myNumber )
+                                           .putString(SaveMessageWorker.STATUS,"incoming" )
                                            .putString(SaveMessageWorker.MESSAGE_CONTENT,"empty")
                                            .putString(SaveMessageWorker.SENT_AT, Calendar.getInstance().time.toString())
                                            .putString(SaveMessageWorker.RECIEVE_AT, Calendar.getInstance().time.toString())
