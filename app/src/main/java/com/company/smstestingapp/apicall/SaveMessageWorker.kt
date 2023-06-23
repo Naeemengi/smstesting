@@ -44,7 +44,7 @@ class SaveMessageWorker (
         }
 
 
-        Log.e("Worker", "Saving Message $senderPhoneNumber $file_Path")
+        Log.e("Worker", "Saving Message $senderPhoneNumber $file_Path $message")
 
 //        return if (saveNumberResponse.status == 200) {
         return  Result.success()

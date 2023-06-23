@@ -8,6 +8,7 @@ import android.net.Uri
 import android.os.Handler
 import android.os.IBinder
 import android.provider.Telephony
+import android.provider.Telephony.Mms
 import android.provider.Telephony.Threads.getOrCreateThreadId
 import android.webkit.MimeTypeMap
 import android.widget.Toast
@@ -22,11 +23,16 @@ class SmsObserverService : Service() {
     val myObserver = SmsObserver1(Handler())
     val mmsObserver = MmsObserver1(Handler())
 
+    override fun onCreate() {
+        super.onCreate()
+        myObserver.setmContext(this)
+        mmsObserver.setmContext(this)
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
 //        onTaskRemoved(intent);
 
-        myObserver.setmContext(this)
-        mmsObserver.setmContext(this)
+
 //        myObserver.observe()
         val contentResolver = this.baseContext.contentResolver
         try {
@@ -156,21 +162,22 @@ class MmsObserver1(handler: Handler?) : ContentObserver(handler) {
            mContext?.contentResolver?.query(
                Telephony.Mms.CONTENT_URI,
                null,
-               "date" + ">?",
                null,
-               "date ASC"
+               null,
+               "date DESC"
            ) ?.apply {
                if (moveToFirst()) {
                    val idColumn = getColumnIndex("_id")
                    val dateColumn = getColumnIndex("date")
                    val textColumn = getColumnIndex("text_only")
                    val typeColumn = getColumnIndex("msg_box")
-                   if (smsChecker(idColumn.toString())) {
+
                        do {
                            val id = getString(idColumn)
                            val isMms = getString(textColumn) == "0"
                            val date = getString(dateColumn).toLong() * 1000
                            val type = getString(typeColumn).toInt()
+                           if (smsChecker(id)) {
                            if (isMms) {
                                val selectionPart = "mid=$id"
                                val partUri = Uri.parse("content://mms/part")
@@ -182,8 +189,10 @@ class MmsObserver1(handler: Handler?) : ContentObserver(handler) {
                                var file: String? = null
                                if (cursor.moveToFirst()) {
                                    do {
-                                       val partId: String = cursor.getString(cursor.getColumnIndex("_id"))
-                                       val typeString = cursor.getString(cursor.getColumnIndex("ct"))
+                                       val partId: String =
+                                           cursor.getString(cursor.getColumnIndex("_id"))
+                                       val typeString =
+                                           cursor.getString(cursor.getColumnIndex("ct"))
                                        if (file == null &&
                                            (typeString.startsWith("video") ||
                                                    typeString.startsWith("image") ||
@@ -193,38 +202,50 @@ class MmsObserver1(handler: Handler?) : ContentObserver(handler) {
                                        }
                                        if (file != null && body.isNotEmpty()) break
 
-                                       val sender = getAddressNumber(id.toInt())
-                                       val rawNumber = sender.second
-
-                                       val sh = android.preference.PreferenceManager.getDefaultSharedPreferences(mContext)
-
-                                       val myNumber = sh.getString("myNumber", "000");
-                                       val dataToSend = Data.Builder()
-                                           .putString(SaveMessageWorker.SENDER_PHONE_NUMBER, rawNumber)
-                                           .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER,myNumber )
-                                           .putString(SaveMessageWorker.STATUS,"incoming" )
-                                           .putString(SaveMessageWorker.MESSAGE_CONTENT,"empty")
-                                           .putString(SaveMessageWorker.SENT_AT, Calendar.getInstance().time.toString())
-                                           .putString(SaveMessageWorker.RECIEVE_AT, Calendar.getInstance().time.toString())
-                                           .putString(SaveMessageWorker.FILE_PATH, file)
-                                           .build()
-                                       val createPostConstraints =
-                                           Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()
-                                       val saveNumberWorkRequest = OneTimeWorkRequest.Builder(SaveMessageWorker::class.java)
-                                           .setConstraints(createPostConstraints)
-                                           .setInputData(dataToSend).build()
-
-                                       mContext?.let { WorkManager.getInstance(it).enqueue(saveNumberWorkRequest) }
-
-                                       return@Thread
-
                                    } while (cursor.moveToNext())
                                }
                                cursor.close()
 
+                               val sender = getAddressNumber(id.toInt())
+                               val rawNumber = sender.second
+
+                               val sh = android.preference.PreferenceManager.getDefaultSharedPreferences(mContext)
+
+                               val myNumber = sh.getString("myNumber", "000");
+                               val dataToSend = Data.Builder()
+                                   .putString(SaveMessageWorker.SENDER_PHONE_NUMBER, rawNumber)
+                                   .putString(SaveMessageWorker.RECIEVER_PHONE_NUMBER, myNumber)
+                                   .putString(SaveMessageWorker.STATUS, "incoming")
+                                   .putString(SaveMessageWorker.MESSAGE_CONTENT, "empty")
+                                   .putString(
+                                       SaveMessageWorker.SENT_AT,
+                                       Calendar.getInstance().time.toString()
+                                   )
+                                   .putString(
+                                       SaveMessageWorker.RECIEVE_AT,
+                                       Calendar.getInstance().time.toString()
+                                   )
+                                   .putString(SaveMessageWorker.FILE_PATH, file)
+                                   .build()
+                               val createPostConstraints =
+                                   Constraints.Builder()
+                                       .setRequiredNetworkType(NetworkType.CONNECTED).build()
+                               val saveNumberWorkRequest =
+                                   OneTimeWorkRequest.Builder(SaveMessageWorker::class.java)
+                                       .setConstraints(createPostConstraints)
+                                       .setInputData(dataToSend).build()
+
+                               mContext?.let {
+                                   WorkManager.getInstance(it).enqueue(saveNumberWorkRequest)
+                               }
+
+                               return@Thread
                            }
+                       } else {
+                               return@Thread
+                       }
                        } while (moveToNext())
-                   }
+//                   }
                }
                close()
            }
