@@ -6,21 +6,16 @@ import android.os.Build
 import android.os.Bundle
 import android.os.PowerManager
 import android.provider.Settings
-import android.provider.Telephony
 import android.view.Menu
 import android.view.MenuItem
-import android.webkit.MimeTypeMap
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.navigateUp
 import androidx.navigation.ui.setupActionBarWithNavController
-import androidx.work.*
 import com.company.smstestingapp.databinding.ActivityMainBinding
+import com.company.smstestingapp.room.SmsObserverService
 import com.google.android.material.snackbar.Snackbar
-import java.io.File
-import java.io.FileOutputStream
-import java.util.*
 
 
 class MainActivity : AppCompatActivity() {

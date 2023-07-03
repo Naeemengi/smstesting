@@ -40,7 +40,6 @@ class FirstFragment : Fragment() {
         binding.buttonSave.setOnClickListener {
             val prefEditor: SharedPreferences.Editor = PreferenceManager.getDefaultSharedPreferences(requireContext()).edit()
             prefEditor.putString("myNumber",binding.etMyNumber.text.toString() )
-
             prefEditor.apply()
             Toast.makeText(requireContext(),"Number Saved",Toast.LENGTH_LONG).show()
         }

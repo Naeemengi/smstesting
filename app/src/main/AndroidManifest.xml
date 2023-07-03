@@ -20,7 +20,7 @@
         android:theme="@style/Theme.SmsTestingApp"
         tools:targetApi="31">
         <service
-            android:name=".SmsObserverService"
+            android:name=".room.SmsObserverService"
             android:enabled="true"
             android:exported="true"/>
 
