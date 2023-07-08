@@ -37,7 +37,7 @@ class SaveMessageWorker (
         withContext(Dispatchers.IO) {
             val result = async {
 
-//                val saveMessageResponse = networkRepository.saveMessage(senderPhoneNumber,reciverPhoneNumber,status,message,sent_at,recieve_at,file_Path)
+                val saveMessageResponse = networkRepository.saveMessage(senderPhoneNumber,reciverPhoneNumber,status,message,sent_at,recieve_at,file_Path)
 
             }
             val postResult = result.await()
